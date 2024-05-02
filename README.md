@@ -1,3 +1,5 @@
+![Onegram](https://github.com/mishan-ya/Onegram/assets/81864768/6870fad2-3ecc-4466-9c07-28bb18581743)
+
 # 🗑️ Onegram
 
 Onegram is a fork of Nekogram, which means it's just another Telegram client

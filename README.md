@@ -20,7 +20,7 @@ MTProto protocol manuals: https://core.telegram.org/mtproto
 
 ## Compilation Guide
 
-1. Download the Nekogram source code ( `git clone https://github.com/Nekogram/Nekogram.git` )
+1. Download the Onegram source code ( `git clone https://github.com/mishan-ya/Onegram.git` )
 1. Fill out storeFile, storePassword, keyAlias, keyPassword in local.properties to access your release.keystore
 1. Go to https://console.firebase.google.com/, create two android apps with application IDs idiot.pigam.onegram and idiot.pigam.onegram.beta, turn on firebase messaging and download `google-services.json`, which should be copied into `TMessagesProj` folder.
 1. Open the project in the Studio (note that it should be opened, NOT imported).

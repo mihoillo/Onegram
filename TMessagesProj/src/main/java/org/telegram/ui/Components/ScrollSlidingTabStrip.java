@@ -136,7 +136,9 @@ public class ScrollSlidingTabStrip extends HorizontalScrollView {
                 return;
             }
             if (p >= 0 && p < tabsContainer.getChildCount()) {
-                performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                try {
+                    performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                } catch (Exception ignored) {}
                 draggindViewDxOnScreen = 0f;
                 draggingViewOutProgress = 0f;
                 draggingView = tabsContainer.getChildAt(p);
@@ -642,7 +644,7 @@ public class ScrollSlidingTabStrip extends HorizontalScrollView {
                             TLRPC.TL_messages_stickerSet stickerSet = ((TLRPC.TL_messages_stickerSet) parentObject);
                             thumbVersion = ((TLRPC.TL_messages_stickerSet) parentObject).set.thumb_version;
                             if (!tabView.inited) {
-                                tabView.svgThumb = DocumentObject.getSvgThumb(stickerSet.set.thumbs, Theme.key_emptyListPlaceholder, 0.2f);
+                                tabView.svgThumb = DocumentObject.getSvgThumb(stickerSet.set.thumbs, Theme.key_emptyListPlaceholder, 0.2f, DocumentObject.containsPhotoSizeType(stickerSet.set.thumbs, "v"));
                             }
                         }
                         thumbType = thumb.type;

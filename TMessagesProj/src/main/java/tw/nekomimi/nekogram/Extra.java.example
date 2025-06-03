@@ -1,14 +1,10 @@
 package tw.nekomimi.nekogram;
 
-import org.telegram.messenger.Utilities;
+import java.util.function.BiConsumer;
 
 import tw.nekomimi.nekogram.helpers.UserHelper;
 
 public class Extra {
-    // See UpdateHelper.java
-    public static final int UPDATE_CHANNEL_ID = 0;
-    public static final String UPDATE_CHANNEL = "";
-
     // https://core.telegram.org/api/obtaining_api_id
     public static final int APP_ID = 0;
     public static final String APP_HASH = "";
@@ -19,20 +15,25 @@ public class Extra {
     public static String WS_CONN_HASH = "";
     public static String WS_DEFAULT_DOMAIN = "";
 
-    public static String WEBVIEW_BOT = "";
-    public static long WEBVIEW_BOT_ID = 0;
+    public static String TWPIC_BOT_USERNAME = null;
 
     public static boolean FORCE_ANALYTICS = false;
+
+    public static String TLV_URL = "";
 
     public static long getOwnerFromStickerSetId(long id) {
         return 0;
     }
 
-    public static void getRegDate(long userId, Utilities.Callback<UserHelper.RegDate> callback) {
+    public static void getRegDate(long userId, BiConsumer<Integer, String> callback) {
 
     }
 
-    public static UserInfoBot getUserInfoBot(boolean fallback) {
+    public static UserHelper.BotInfo getHelperBot() {
+        return null;
+    }
+
+    public static UserHelper.UserInfoBot getUserInfoBot(boolean fallback) {
         return null;
     }
 

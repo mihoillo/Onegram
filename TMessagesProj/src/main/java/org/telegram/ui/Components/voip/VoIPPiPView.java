@@ -36,6 +36,9 @@ import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
+import org.telegram.messenger.pip.PictureInPictureContentViewProvider;
+import org.telegram.messenger.pip.PipNativeApiController;
+import org.telegram.messenger.pip.PipSource;
 import org.telegram.messenger.voip.Instance;
 import org.telegram.messenger.voip.VideoCapturerDevice;
 import org.telegram.messenger.voip.VoIPService;
@@ -44,7 +47,7 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.VoIPFragment;
 
-public class VoIPPiPView implements VoIPService.StateListener, NotificationCenter.NotificationCenterDelegate {
+public class VoIPPiPView implements VoIPService.StateListener, PictureInPictureContentViewProvider, NotificationCenter.NotificationCenterDelegate {
 
     public final static int ANIMATION_ENTER_TYPE_SCALE = 0;
     public final static int ANIMATION_ENTER_TYPE_TRANSITION = 1;
@@ -63,6 +66,7 @@ public class VoIPPiPView implements VoIPService.StateListener, NotificationCente
     private boolean expandedAnimationInProgress;
     private WindowManager windowManager;
     public WindowManager.LayoutParams windowLayoutParams;
+    private PipSource pipSource;
 
     public final int parentWidth;
     public final int parentHeight;
@@ -177,6 +181,14 @@ public class VoIPPiPView implements VoIPService.StateListener, NotificationCente
             if (VoIPService.getSharedInstance() != null) {
                 VoIPService.getSharedInstance().setBackgroundSinks(instance.currentUserTextureView.renderer, instance.callingUserTextureView.renderer);
             }
+        }
+
+        if (PipNativeApiController.checkPermissions(activity) == PipNativeApiController.PIP_GRANTED_PIP) {
+            instance.pipSource = new PipSource.Builder(activity, instance)
+                .setTagPrefix("voip-pip")
+                .setPriority(1)
+                .setContentView(instance.windowView)
+                .build();
         }
     }
 
@@ -320,13 +332,13 @@ public class VoIPPiPView implements VoIPService.StateListener, NotificationCente
             closeIcon = new ImageView(context);
             closeIcon.setImageResource(R.drawable.pip_close);
             closeIcon.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8));
-            closeIcon.setContentDescription(LocaleController.getString("Close", R.string.Close));
+            closeIcon.setContentDescription(LocaleController.getString(R.string.Close));
             floatingView.addView(closeIcon, LayoutHelper.createFrame(40, 40, Gravity.TOP | Gravity.RIGHT, 4, 4, 4, 0));
 
             enlargeIcon = new ImageView(context);
             enlargeIcon.setImageResource(R.drawable.pip_enlarge);
             enlargeIcon.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8));
-            enlargeIcon.setContentDescription(LocaleController.getString("Open", R.string.Open));
+            enlargeIcon.setContentDescription(LocaleController.getString(R.string.Open));
             floatingView.addView(enlargeIcon, LayoutHelper.createFrame(40, 40, Gravity.TOP | Gravity.LEFT, 4, 4, 4, 0));
 
             closeIcon.setOnClickListener((v) -> {
@@ -380,6 +392,10 @@ public class VoIPPiPView implements VoIPService.StateListener, NotificationCente
             } catch (Throwable e) {
                 FileLog.e(e);
             }
+        }
+        if (pipSource != null) {
+            pipSource.destroy();
+            pipSource = null;
         }
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.didEndCall);
     }
@@ -495,6 +511,37 @@ public class VoIPPiPView implements VoIPService.StateListener, NotificationCente
     public void didReceivedNotification(int id, int account, Object... args) {
         if (id == NotificationCenter.didEndCall) {
             finish();
+        }
+    }
+
+    @Override
+    public View detachContentFromWindow() {
+        windowView.setVisibility(View.GONE);
+        floatingView.removeView(callingUserTextureView);
+
+        return callingUserTextureView;
+    }
+
+    @Override
+    public void onAttachContentToPip() {
+        if (VoIPService.getSharedInstance() != null) {
+            VoIPService.getSharedInstance().setSinks(currentUserTextureView.renderer, callingUserTextureView.renderer);
+        }
+    }
+
+    @Override
+    public void prepareDetachContentFromPip() {
+
+    }
+
+    @Override
+    public void attachContentToWindow() {
+        windowView.setVisibility(View.VISIBLE);
+        floatingView.addView(callingUserTextureView, 0);
+
+        final VoIPService voip = VoIPService.getSharedInstance();
+        if (voip != null) {
+            voip.setSinks(currentUserTextureView.renderer, callingUserTextureView.renderer);
         }
     }
 
@@ -687,6 +734,7 @@ public class VoIPPiPView implements VoIPService.StateListener, NotificationCente
                 layoutParams.x = (int) (windowLayoutParams.x - (widthExpanded - widthNormal) * cX);
                 layoutParams.y = (int) (windowLayoutParams.y - (heightExpanded - heightNormal) * cY);
 
+                AndroidUtilities.setPreferredMaxRefreshRate(windowManager, pipViewExpanded.windowView, layoutParams);
                 windowManager.addView(pipViewExpanded.windowView, layoutParams);
                 pipViewExpanded.windowView.setAlpha(1f);
                 pipViewExpanded.windowLayoutParams = layoutParams;
@@ -784,6 +832,7 @@ public class VoIPPiPView implements VoIPService.StateListener, NotificationCente
                         }
                         swapRender(expandedInstance, instance);
                         instance.windowView.setAlpha(1f);
+                        AndroidUtilities.setPreferredMaxRefreshRate(windowManager, instance.windowView, instance.windowLayoutParams);
                         windowManager.addView(instance.windowView, instance.windowLayoutParams);
                         AndroidUtilities.runOnUIThread(() -> {
                             if (instance == null || expandedInstance == null) {

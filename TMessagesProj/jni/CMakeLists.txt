@@ -13,8 +13,11 @@ ${CMAKE_HOME_DIRECTORY}/ffmpeg/${ANDROID_ABI}/libavresample.a,
 ${CMAKE_HOME_DIRECTORY}/ffmpeg/${ANDROID_ABI}/libavutil.a,
 ${CMAKE_HOME_DIRECTORY}/ffmpeg/${ANDROID_ABI}/libswresample.a,
 ${CMAKE_HOME_DIRECTORY}/ffmpeg/${ANDROID_ABI}/libvpx.a,
-${CMAKE_HOME_DIRECTORY}/boringssl/lib/libssl_${ANDROID_ABI}.a,
-${CMAKE_HOME_DIRECTORY}/boringssl/lib/libcrypto_${ANDROID_ABI}.a")
+${CMAKE_HOME_DIRECTORY}/ffmpeg/${ANDROID_ABI}/libdav1d.a,
+${CMAKE_HOME_DIRECTORY}/boringssl/lib/${ANDROID_ABI}/libssl.a,
+${CMAKE_HOME_DIRECTORY}/boringssl/lib/${ANDROID_ABI}/libcrypto.a,
+${CMAKE_HOME_DIRECTORY}/tde2e/${ANDROID_ABI}/libtde2e.a,
+${CMAKE_HOME_DIRECTORY}/tde2e/${ANDROID_ABI}/libtdutils.a")
 
 if (${ANDROID_ABI} STREQUAL "armeabi-v7a" OR ${ANDROID_ABI} STREQUAL "arm64-v8a")
     enable_language(ASM)
@@ -41,14 +44,145 @@ add_library(swscale STATIC IMPORTED)
 set_target_properties(swscale PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/ffmpeg/${ANDROID_ABI}/libswscale.a)
 
 add_library(crypto STATIC IMPORTED)
-set_target_properties(crypto PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/boringssl/lib/libcrypto_${ANDROID_ABI}.a)
+set_target_properties(crypto PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/boringssl/lib/${ANDROID_ABI}/libcrypto.a)
 
 add_library(ssl STATIC IMPORTED)
-set_target_properties(ssl PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/boringssl/lib/libssl_${ANDROID_ABI}.a)
+set_target_properties(ssl PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/boringssl/lib/${ANDROID_ABI}/libssl.a)
 
 add_library(libvpx STATIC IMPORTED)
 set_target_properties(libvpx PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/ffmpeg/${ANDROID_ABI}/libvpx.a)
 
+add_library(libdav1d STATIC IMPORTED)
+set_target_properties(libdav1d PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/ffmpeg/${ANDROID_ABI}/libdav1d.a)
+
+add_library(tde2e STATIC IMPORTED)
+set_target_properties(tde2e PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/tde2e/${ANDROID_ABI}/libtde2e.a)
+
+add_library(tdutils STATIC IMPORTED)
+set_target_properties(tdutils PROPERTIES IMPORTED_LOCATION ${CMAKE_HOME_DIRECTORY}/tde2e/${ANDROID_ABI}/libtdutils.a)
+
+#tgnet
+#add_library(mozjpeg STATIC
+#        mozjpeg/cjpeg.c mozjpeg/cdjpeg.c mozjpeg/rdgif.c mozjpeg/rdppm.c mozjpeg/rdjpeg.c mozjpeg/rdswitch.c mozjpeg/rdbmp.c
+#        mozjpeg/rdtarga.c mozjpeg/wrbmp.c mozjpeg/wrtarga.c mozjpeg/djpeg.c mozjpeg/cdjpeg.c mozjpeg/rdcolmap.c mozjpeg/rdswitch.c
+#        mozjpeg/wrgif.c mozjpeg/wrppm.c mozjpeg/jpegtran.c mozjpeg/cdjpeg.c mozjpeg/rdswitch.c mozjpeg/transupp.c mozjpeg/turbojpeg.c
+#        mozjpeg/jdatadst-tj.c mozjpeg/jdatasrc-tj.c mozjpeg/jcapimin.c mozjpeg/jcapistd.c mozjpeg/jccoefct.c mozjpeg/jccolor.c
+#        mozjpeg/jcdctmgr.c mozjpeg/jchuff.c mozjpeg/jcext.c mozjpeg/jcicc.c mozjpeg/jcinit.c mozjpeg/jcmainct.c mozjpeg/jcmarker.c
+#        mozjpeg/jcmaster.c mozjpeg/jcomapi.c mozjpeg/jcparam.c mozjpeg/jcphuff.c mozjpeg/jcprepct.c mozjpeg/jcsample.c
+#        mozjpeg/jctrans.c mozjpeg/jdapimin.c mozjpeg/jdapistd.c mozjpeg/jdatadst.c mozjpeg/jdatasrc.c
+#        mozjpeg/jdcoefct.c mozjpeg/jdcolor.c mozjpeg/jddctmgr.c mozjpeg/jdhuff.c mozjpeg/jdicc.c mozjpeg/jdinput.c
+#        mozjpeg/jdmainct.c mozjpeg/jdmarker.c mozjpeg/jdmaster.c mozjpeg/jdmerge.c mozjpeg/jdphuff.c mozjpeg/jdpostct.c mozjpeg/jdsample.c
+#        mozjpeg/jdtrans.c mozjpeg/jerror.c mozjpeg/jfdctflt.c mozjpeg/jfdctfst.c mozjpeg/jfdctint.c mozjpeg/jidctflt.c mozjpeg/jidctfst.c
+#        mozjpeg/jidctint.c mozjpeg/jidctred.c mozjpeg/jquant1.c mozjpeg/jquant2.c mozjpeg/jutils.c mozjpeg/jmemmgr.c mozjpeg/jmemnobs.c)
+#target_compile_options(mozjpeg PUBLIC
+#        -Os)
+#set_target_properties(mozjpeg PROPERTIES
+#        ANDROID_ARM_MODE arm)
+#target_compile_definitions(mozjpeg PUBLIC
+#        BMP_SUPPORTED GIF_SUPPORTED PPM_SUPPORTED TARGA_SUPPORTED)
+#target_include_directories(mozjpeg PUBLIC
+#        mozjpeg
+#        mozjpeg/simd/nasm)
+#
+#if (${ANDROID_ABI} STREQUAL "armeabi-v7a")
+#    target_sources(mozjpeg PRIVATE
+#            mozjpeg/simd/arm/jsimd_neon.S
+#            mozjpeg/simd/arm/jsimd.c)
+#    target_compile_definitions(mozjpeg PUBLIC
+#            SIZEOF_SIZE_T=4)
+#elseif(${ANDROID_ABI} STREQUAL "arm64-v8a")
+#    target_sources(mozjpeg PRIVATE
+#            mozjpeg/simd/arm64/jsimd_neon.S
+#            mozjpeg/simd/arm64/jsimd.c)
+#    target_compile_definitions(mozjpeg PUBLIC
+#            SIZEOF_SIZE_T=8)
+#elseif(${ANDROID_ABI} STREQUAL "x86")
+#    set(CMAKE_ASM_NASM_COMPILER_ARG1 "${CMAKE_ASM_NASM_COMPILER_ARG1} -DPIC")
+#    target_sources(mozjpeg PRIVATE
+#            mozjpeg/simd/i386/jsimd.c
+#            mozjpeg/simd/i386/jsimdcpu.asm
+#            mozjpeg/simd/i386/jfdctflt-3dn.asm
+#            mozjpeg/simd/i386/jidctflt-3dn.asm
+#            mozjpeg/simd/i386/jquant-3dn.asm
+#            mozjpeg/simd/i386/jccolor-mmx.asm
+#            mozjpeg/simd/i386/jcgray-mmx.asm
+#            mozjpeg/simd/i386/jcsample-mmx.asm
+#            mozjpeg/simd/i386/jdcolor-mmx.asm
+#            mozjpeg/simd/i386/jdmerge-mmx.asm
+#            mozjpeg/simd/i386/jdsample-mmx.asm
+#            mozjpeg/simd/i386/jfdctfst-mmx.asm
+#            mozjpeg/simd/i386/jfdctint-mmx.asm
+#            mozjpeg/simd/i386/jidctfst-mmx.asm
+#            mozjpeg/simd/i386/jidctint-mmx.asm
+#            mozjpeg/simd/i386/jidctred-mmx.asm
+#            mozjpeg/simd/i386/jquant-mmx.asm
+#            mozjpeg/simd/i386/jfdctflt-sse.asm
+#            mozjpeg/simd/i386/jidctflt-sse.asm
+#            mozjpeg/simd/i386/jquant-sse.asm
+#            mozjpeg/simd/i386/jccolor-sse2.asm
+#            mozjpeg/simd/i386/jcgray-sse2.asm
+#            mozjpeg/simd/i386/jchuff-sse2.asm
+#            mozjpeg/simd/i386/jcphuff-sse2.asm
+#            mozjpeg/simd/i386/jcsample-sse2.asm
+#            mozjpeg/simd/i386/jdcolor-sse2.asm
+#            mozjpeg/simd/i386/jdmerge-sse2.asm
+#            mozjpeg/simd/i386/jdsample-sse2.asm
+#            mozjpeg/simd/i386/jfdctfst-sse2.asm
+#            mozjpeg/simd/i386/jfdctint-sse2.asm
+#            mozjpeg/simd/i386/jidctflt-sse2.asm
+#            mozjpeg/simd/i386/jidctfst-sse2.asm
+#            mozjpeg/simd/i386/jidctint-sse2.asm
+#            mozjpeg/simd/i386/jidctred-sse2.asm
+#            mozjpeg/simd/i386/jquantf-sse2.asm
+#            mozjpeg/simd/i386/jquanti-sse2.asm
+#            mozjpeg/simd/i386/jccolor-avx2.asm
+#            mozjpeg/simd/i386/jcgray-avx2.asm
+#            mozjpeg/simd/i386/jcsample-avx2.asm
+#            mozjpeg/simd/i386/jdcolor-avx2.asm
+#            mozjpeg/simd/i386/jdmerge-avx2.asm
+#            mozjpeg/simd/i386/jdsample-avx2.asm
+#            mozjpeg/simd/i386/jfdctint-avx2.asm
+#            mozjpeg/simd/i386/jidctint-avx2.asm
+#            mozjpeg/simd/i386/jquanti-avx2.asm)
+#    target_compile_definitions(mozjpeg PUBLIC
+#            SIZEOF_SIZE_T=4)
+#elseif(${ANDROID_ABI} STREQUAL "x86_64")
+#    set(CMAKE_ASM_NASM_COMPILER_ARG1 "${CMAKE_ASM_NASM_COMPILER_ARG1} -DPIC")
+#    set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DELF")
+#    set(CMAKE_ASM_NASM_DEBUG_FORMAT "dwarf2")
+#    set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -D__x86_64__")
+#    target_sources(mozjpeg PRIVATE
+#            mozjpeg/simd/x86_64/jsimd.c
+#            mozjpeg/simd/x86_64/jsimdcpu.asm
+#            mozjpeg/simd/x86_64/jfdctflt-sse.asm
+#            mozjpeg/simd/x86_64/jccolor-sse2.asm
+#            mozjpeg/simd/x86_64/jcgray-sse2.asm
+#            mozjpeg/simd/x86_64/jchuff-sse2.asm
+#            mozjpeg/simd/x86_64/jcphuff-sse2.asm
+#            mozjpeg/simd/x86_64/jcsample-sse2.asm
+#            mozjpeg/simd/x86_64/jdcolor-sse2.asm
+#            mozjpeg/simd/x86_64/jdmerge-sse2.asm
+#            mozjpeg/simd/x86_64/jdsample-sse2.asm
+#            mozjpeg/simd/x86_64/jfdctfst-sse2.asm
+#            mozjpeg/simd/x86_64/jfdctint-sse2.asm
+#            mozjpeg/simd/x86_64/jidctflt-sse2.asm
+#            mozjpeg/simd/x86_64/jidctfst-sse2.asm
+#            mozjpeg/simd/x86_64/jidctint-sse2.asm
+#            mozjpeg/simd/x86_64/jidctred-sse2.asm
+#            mozjpeg/simd/x86_64/jquantf-sse2.asm
+#            mozjpeg/simd/x86_64/jquanti-sse2.asm
+#            mozjpeg/simd/x86_64/jccolor-avx2.asm
+#            mozjpeg/simd/x86_64/jcgray-avx2.asm
+#            mozjpeg/simd/x86_64/jcsample-avx2.asm
+#            mozjpeg/simd/x86_64/jdcolor-avx2.asm
+#            mozjpeg/simd/x86_64/jdmerge-avx2.asm
+#            mozjpeg/simd/x86_64/jdsample-avx2.asm
+#            mozjpeg/simd/x86_64/jfdctint-avx2.asm
+#            mozjpeg/simd/x86_64/jidctint-avx2.asm
+#            mozjpeg/simd/x86_64/jquanti-avx2.asm)
+#    target_compile_definitions(mozjpeg PUBLIC
+#            SIZEOF_SIZE_T=8)
+#endif()
 
 #tgnet
 add_library(tgnet STATIC
@@ -130,20 +264,17 @@ target_include_directories(rlottie PUBLIC
         rlottie/src/vector/stb)
 
 if (${ANDROID_ABI} STREQUAL "armeabi-v7a")
-    target_compile_options(rlottie PUBLIC
-            -fno-integrated-as)
     target_compile_definitions(rlottie PUBLIC
             USE_ARM_NEON)
     target_sources(rlottie PRIVATE
             rlottie/src/vector/pixman/pixman-arm-neon-asm.S)
 elseif(${ANDROID_ABI} STREQUAL "arm64-v8a")
-    target_compile_options(rlottie PUBLIC
-            -fno-integrated-as)
     target_compile_definitions(rlottie PUBLIC
             USE_ARM_NEON __ARM64_NEON__)
     target_sources(rlottie PRIVATE
             rlottie/src/vector/pixman/pixman-arma64-neon-asm.S)
 endif()
+
 
 #flac
 add_library(flac STATIC
@@ -182,7 +313,6 @@ target_compile_definitions(flac PUBLIC
 target_include_directories(flac PUBLIC
         exoplayer/libFLAC/include)
 
-
 #sqlite
 add_library(sqlite STATIC
         sqlite/sqlite3.c)
@@ -196,6 +326,7 @@ target_compile_definitions(sqlite PUBLIC
 
 #voip
 include(${CMAKE_HOME_DIRECTORY}/voip/CMakeLists.txt)
+include(${CMAKE_HOME_DIRECTORY}/colorado/CMakeLists.txt)
 
 set(NATIVE_LIB "neko.49")
 
@@ -219,7 +350,9 @@ add_library(${NATIVE_LIB} SHARED
         exoplayer/ffmpeg_jni.cc
         fast-edge.cpp
         genann.c
-        secureid_ocr.cpp)
+        secureid_ocr.cpp
+        tde2e/bridge.cpp
+)
 
 target_compile_options(${NATIVE_LIB} PUBLIC
         -ffast-math -Os -funroll-loops -ffast-math -fno-strict-aliasing -fno-math-errno)
@@ -469,13 +602,16 @@ target_include_directories(${NATIVE_LIB} PUBLIC
         intro
         rlottie/inc
         tgcalls/
-        webrtc/)
+        webrtc/
+        tde2e/include
+)
 
 target_link_libraries(${NATIVE_LIB}
         -Wl,--whole-archive rnnoise openh264 voipandroid -Wl,--no-whole-archive
         tgvoip
         tgcalls
         tgcalls_tp
+#        mozjpeg
         tgnet
         flac
         rlottie
@@ -486,6 +622,9 @@ target_link_libraries(${NATIVE_LIB}
         avresample
         swresample
         libvpx
+        libdav1d
+        tde2e
+        tdutils
         avutil
         ssl
         crypto
@@ -496,6 +635,7 @@ target_link_libraries(${NATIVE_LIB}
         EGL
         android
         OpenSLES
+        colorado
         cpufeatures)
 
 #if (${ANDROID_ABI} STREQUAL "x86" OR ${ANDROID_ABI} STREQUAL "x86_64")

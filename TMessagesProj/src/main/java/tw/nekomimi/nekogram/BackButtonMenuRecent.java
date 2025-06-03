@@ -23,6 +23,7 @@ import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
+import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
@@ -30,15 +31,16 @@ import org.telegram.tgnet.SerializedData;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBarPopupWindow;
 import org.telegram.ui.ActionBar.AlertDialog;
-import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.AvatarDrawable;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.DialogsActivity;
 import org.telegram.ui.ProfileActivity;
 import org.telegram.ui.TopicsFragment;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -49,7 +51,7 @@ public class BackButtonMenuRecent {
     private static final SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekorecentdialogs", Context.MODE_PRIVATE);
     private static final SparseArray<LinkedList<Long>> recentDialogs = new SparseArray<>();
 
-    public static void show(int currentAccount, BaseFragment fragment, View backButton) {
+    public static void show(int currentAccount, DialogsActivity fragment, View backButton, DialogsActivity.DialogsActivityDelegate delegate) {
         if (fragment == null) {
             return;
         }
@@ -181,6 +183,12 @@ public class BackButtonMenuRecent {
             cell.setOnClickListener(e2 -> {
                 if (scrimPopupWindowRef.get() != null) {
                     scrimPopupWindowRef.getAndSet(null).dismiss();
+                }
+                if (delegate != null) {
+                    ArrayList<MessagesStorage.TopicKey> keys = new ArrayList<>();
+                    keys.add(MessagesStorage.TopicKey.of(dialogId, 0));
+                    delegate.didSelectDialogs(fragment, keys, null, false, true, 0, null);
+                    return;
                 }
                 Bundle bundle = new Bundle();
                 if (dialogId < 0) {

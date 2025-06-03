@@ -1428,11 +1428,8 @@ public class DatabaseMigrationHelper {
         }
 
         if (version == 143) {
-            database.executeFast("DROP TABLE IF EXISTS dialog_filter_neko;").stepThis().dispose();
-            database.executeFast("DROP TABLE IF EXISTS dialog_filter;").stepThis().dispose();
-            database.executeFast("CREATE TABLE dialog_filter(id INTEGER PRIMARY KEY, ord INTEGER, unread_count INTEGER, flags INTEGER, title TEXT, color INTEGER DEFAULT -1, emoticon TEXT)").stepThis().dispose();
+            database.executeFast("ALTER TABLE dialog_filter ADD COLUMN color INTEGER default -1").stepThis().dispose();
             database.executeFast("PRAGMA user_version = 144").stepThis().dispose();
-            messagesStorage.getUserConfig().clearFilters();
             version = 144;
         }
 
@@ -1498,6 +1495,63 @@ public class DatabaseMigrationHelper {
 
             database.executeFast("PRAGMA user_version = 152").stepThis().dispose();
             version = 152;
+        }
+
+        if (version == 152) {
+            database.executeFast("ALTER TABLE profile_stories ADD COLUMN pin INTEGER default 0;").stepThis().dispose();
+
+            database.executeFast("PRAGMA user_version = 153").stepThis().dispose();
+            version = 153;
+        }
+
+        if (version == 153) {
+            database.executeFast("CREATE TABLE effects(data BLOB)").stepThis().dispose();
+            database.executeFast("PRAGMA user_version = 154").stepThis().dispose();
+            version = 154;
+        }
+
+        if (version == 154) {
+            database.executeFast("CREATE TABLE fact_checks(hash INTEGER PRIMARY KEY, data BLOB, expires INTEGER);").stepThis().dispose();
+            database.executeFast("PRAGMA user_version = 155").stepThis().dispose();
+            version = 155;
+        }
+
+        if (version == 155) {
+            database.executeFast("CREATE TABLE popular_bots(uid INTEGER PRIMARY KEY, time INTEGER, offset TEXT);").stepThis().dispose();
+            database.executeFast("PRAGMA user_version = 156").stepThis().dispose();
+            version = 156;
+        }
+
+        if (version == 156 || version == 157) {
+            database.executeFast("CREATE TABLE star_gifts2(id INTEGER PRIMARY KEY, data BLOB, hash INTEGER, time INTEGER);").stepThis().dispose();
+            database.executeFast("PRAGMA user_version = 158").stepThis().dispose();
+            version = 158;
+        }
+
+        if (version == 158) {
+            database.executeFast("DELETE FROM star_gifts2").stepThis().dispose();
+            database.executeFast("ALTER TABLE star_gifts2 ADD COLUMN pos INTEGER default 0;").stepThis().dispose();
+            database.executeFast("PRAGMA user_version = 159").stepThis().dispose();
+            version = 159;
+        }
+
+        if (version == 159) {
+            database.executeFast("ALTER TABLE dialog_filter ADD COLUMN entities BLOB").stepThis().dispose();
+            database.executeFast("PRAGMA user_version = 160").stepThis().dispose();
+            version = 160;
+        }
+
+        if (version == 160) {
+            database.executeFast("ALTER TABLE dialog_filter ADD COLUMN noanimate INTEGER").stepThis().dispose();
+            database.executeFast("PRAGMA user_version = 161").stepThis().dispose();
+            version = 161;
+        }
+
+        if (version == 161) {
+            database.executeFast("DELETE FROM popular_bots").stepThis().dispose();
+            database.executeFast("ALTER TABLE popular_bots ADD COLUMN pos INTEGER").stepThis().dispose();
+            database.executeFast("PRAGMA user_version = 162").stepThis().dispose();
+            version = 162;
         }
 
         return version;

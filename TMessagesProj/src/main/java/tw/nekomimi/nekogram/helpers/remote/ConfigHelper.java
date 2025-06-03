@@ -1,6 +1,5 @@
 package tw.nekomimi.nekogram.helpers.remote;
 
-import com.google.gson.JsonSyntaxException;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
@@ -10,14 +9,14 @@ import org.telegram.tgnet.TLRPC;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import tw.nekomimi.nekogram.NekoConfig;
 
 public class ConfigHelper extends BaseRemoteHelper {
-    private static final String NEWS_TAG = "config";
+    private static final String NEWS_METHOD = "get_config";
 
-    private static final List<News> DEFAULT_NEWS_LIST = new ArrayList<>();
     private static final List<Long> DEFAULT_VERIFY_LIST = Arrays.asList(
             1349472891L,
             1339737452L,
@@ -39,16 +38,24 @@ public class ConfigHelper extends BaseRemoteHelper {
 
     public static List<Long> getVerify() {
         Config config = getInstance().getConfig();
-        if (config == null) {
+        if (config == null || config.verify == null) {
             return DEFAULT_VERIFY_LIST;
         }
         return config.verify;
     }
 
+    public static List<Crypto> getCryptos() {
+        Config config = getInstance().getConfig();
+        if (config == null || config.cryptos == null) {
+            return Collections.emptyList();
+        }
+        return config.cryptos;
+    }
+
     public static List<News> getNews() {
         Config config = getInstance().getConfig();
         if (config == null || config.news == null) {
-            return DEFAULT_NEWS_LIST;
+            return Collections.emptyList();
         }
         ArrayList<News> newsItems = new ArrayList<>();
         config.news.forEach(news -> {
@@ -85,10 +92,12 @@ public class ConfigHelper extends BaseRemoteHelper {
                     chat.flags |= 512;
                     chat.emoji_status = status;
                 }
-                if (chatOverride.colorId != null) {
+                if (chatOverride.colorId != null || chatOverride.backgroundEmojiId != null) {
                     var color = new TLRPC.TL_peerColor();
-                    color.flags |= 1;
-                    color.color = chatOverride.colorId;
+                    if (chatOverride.colorId != null) {
+                        color.flags |= 1;
+                        color.color = chatOverride.colorId;
+                    }
                     if (chatOverride.backgroundEmojiId != null) {
                         color.flags |= 2;
                         color.background_emoji_id = chatOverride.backgroundEmojiId;
@@ -96,10 +105,12 @@ public class ConfigHelper extends BaseRemoteHelper {
                     chat.flags |= 128;
                     chat.color = color;
                 }
-                if (chatOverride.profileColorId != null) {
+                if (chatOverride.profileColorId != null || chatOverride.profileBackgroundEmojiId != null) {
                     var color = new TLRPC.TL_peerColor();
-                    color.flags |= 1;
-                    color.color = chatOverride.profileColorId;
+                    if (chatOverride.profileColorId != null) {
+                        color.flags |= 1;
+                        color.color = chatOverride.profileColorId;
+                    }
                     if (chatOverride.profileBackgroundEmojiId != null) {
                         color.flags |= 2;
                         color.background_emoji_id = chatOverride.profileBackgroundEmojiId;
@@ -115,8 +126,8 @@ public class ConfigHelper extends BaseRemoteHelper {
         String string = getInstance().getJSON();
         try {
             return GSON.fromJson(string, Config.class);
-        } catch (JsonSyntaxException e) {
-            FileLog.e(e);
+        } catch (Throwable t) {
+            FileLog.e(t);
             getInstance().load();
             return null;
         }
@@ -128,8 +139,13 @@ public class ConfigHelper extends BaseRemoteHelper {
     }
 
     @Override
-    protected String getTag() {
-        return NEWS_TAG;
+    protected String getRequestMethod() {
+        return NEWS_METHOD;
+    }
+
+    @Override
+    protected String getRequestParams() {
+        return "";
     }
 
     public static class News {
@@ -186,6 +202,18 @@ public class ConfigHelper extends BaseRemoteHelper {
         public Long profileBackgroundEmojiId;
     }
 
+    public static class Crypto {
+        @SerializedName("currency")
+        @Expose
+        public String currency;
+        @SerializedName("chain")
+        @Expose
+        public String chain;
+        @SerializedName("address")
+        @Expose
+        public String address;
+    }
+
     public static class Config {
         @SerializedName("verify")
         @Expose
@@ -196,5 +224,8 @@ public class ConfigHelper extends BaseRemoteHelper {
         @SerializedName("chat_overrides")
         @Expose
         public List<ChatOverride> chatOverrides;
+        @SerializedName("cryptos")
+        @Expose
+        public List<Crypto> cryptos;
     }
 }

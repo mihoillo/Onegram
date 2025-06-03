@@ -1,3 +1,7 @@
+-keepnames @com.google.android.gms.common.annotation.KeepName class *
+-keepclassmembernames class * {
+    @com.google.android.gms.common.annotation.KeepName *;
+}
 -keep class org.webrtc.* { *; }
 -keep class org.webrtc.audio.* { *; }
 -keep class org.webrtc.voiceengine.* { *; }
@@ -8,6 +12,13 @@
 -keep class com.google.android.exoplayer2.metadata.flac.PictureFrame { *; }
 -keep class com.google.android.exoplayer2.decoder.SimpleDecoderOutputBuffer { *; }
 -keep class org.telegram.ui.Stories.recorder.FfmpegAudioWaveformLoader { *; }
+-keep class androidx.mediarouter.app.MediaRouteButton { *; }
+-keepclassmembers class ** {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# https://developers.google.com/ml-kit/known-issues#android_issues
+-keep class com.google.mlkit.nl.languageid.internal.LanguageIdentificationJni { *; }
 
 # Constant folding for resource integers may mean that a resource passed to this method appears to be unused. Keep the method to prevent this from happening.
 -keep class com.google.android.exoplayer2.upstream.RawResourceDataSource {
@@ -102,11 +113,9 @@
 -keep class org.telegram.SQLite.SQLiteException { <methods>; }
 -keep class org.telegram.tgnet.ConnectionsManager { <methods>; }
 -keep class org.telegram.tgnet.NativeByteBuffer { <methods>; }
--keepnames class org.telegram.tgnet.** extends org.telegram.tgnet.TLObject
 -keepclassmembernames,allowshrinking class org.telegram.ui.* { <fields>; }
 -keepclassmembernames,allowshrinking class org.telegram.ui.Cells.* { <fields>; }
 -keepclassmembernames,allowshrinking class org.telegram.ui.Components.* { <fields>; }
--keep class org.telegram.ui.Components.RLottieDrawable$LottieMetadata { <fields>; }
 -keepclassmembernames,allowshrinking class tw.nekomimi.nekogram.MessageDetailsActivity$TextDetailSimpleCell { <fields>; }
 -keepclassmembernames,allowshrinking class tw.nekomimi.nekogram.settings.AccountCell { <fields>; }
 -keepclassmembernames,allowshrinking class tw.nekomimi.nekogram.settings.EmojiSetCell { <fields>; }
@@ -120,18 +129,10 @@
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }
--keepclassmembers class * {
-    @android.webkit.JavascriptInterface <methods>;
-}
 
 -assumenosideeffects class kotlin.jvm.internal.Intrinsics {
     public static void check*(...);
     public static void throw*(...);
-}
-
--assumenosideeffects class android.util.Log {
-    public static *** v(...);
-    public static *** d(...);
 }
 
 -keepclassmembers enum * {
@@ -150,3 +151,14 @@
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 -dontoptimize
+
+-dontwarn com.google.j2objc.annotations.ReflectionSupport
+-dontwarn com.google.j2objc.annotations.RetainedWith
+-dontwarn com.google.j2objc.annotations.Weak
+-dontwarn android.support.annotation.IntRange
+-dontwarn android.support.annotation.NonNull
+-dontwarn android.support.annotation.Nullable
+-dontwarn android.support.annotation.RequiresApi
+-dontwarn android.support.annotation.Size
+-dontwarn android.support.annotation.VisibleForTesting
+-dontwarn android.support.v4.app.NotificationCompat$Builder

@@ -7,6 +7,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
+import org.telegram.tgnet.tl.TL_bots;
 
 import java.util.HashMap;
 
@@ -40,16 +41,20 @@ public class CloudStorageHelper extends AccountInstance {
     }
 
     private void invokeWebViewCustomMethod(String method, String data, boolean searchUser, Utilities.Callback2<String, String> callback) {
-        TLRPC.User user = getMessagesController().getUser(Extra.WEBVIEW_BOT_ID);
+        var botInfo = Extra.getHelperBot();
+        if (botInfo == null) {
+            return;
+        }
+        TLRPC.User user = getMessagesController().getUser(botInfo.getId());
         if (user == null) {
             if (searchUser) {
-                getUserHelper().resolveUser(Extra.WEBVIEW_BOT, Extra.WEBVIEW_BOT_ID, arg -> invokeWebViewCustomMethod(method, data, false, callback));
+                getUserHelper().resolveUser(botInfo.getUsername(), botInfo.getId(), arg -> invokeWebViewCustomMethod(method, data, false, callback));
             } else {
                 callback.run(null, "USER_NOT_FOUND");
             }
             return;
         }
-        TLRPC.TL_bots_invokeWebViewCustomMethod req = new TLRPC.TL_bots_invokeWebViewCustomMethod();
+        TL_bots.invokeWebViewCustomMethod req = new TL_bots.invokeWebViewCustomMethod();
         req.bot = getMessagesController().getInputUser(user);
         req.custom_method = method;
         req.params = new TLRPC.TL_dataJSON();

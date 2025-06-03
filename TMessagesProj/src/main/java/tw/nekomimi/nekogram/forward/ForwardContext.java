@@ -29,7 +29,11 @@ public interface ForwardContext {
     }
 
     default void openShareAlert(BaseFragment parentFragment, ChatActivity parentChatActivity, Runnable callback) {
-        parentFragment.showDialog(new ShareAlert(parentFragment.getParentActivity(), parentChatActivity, getForwardingMessages(), null, null, false, null, null, false, false, false, forwardParams.noQuote, forwardParams.noCaption, parentFragment.getResourceProvider()) {
+        var context = parentFragment.getContext();
+        if (context == null) {
+            return;
+        }
+        parentFragment.showDialog(new ShareAlert(context, parentChatActivity, getForwardingMessages(), null, null, false, null, null, false, false, false, forwardParams.noQuote, forwardParams.noCaption, null, parentFragment.getResourceProvider()) {
             @Override
             public void dismissInternal() {
                 super.dismissInternal();
@@ -42,8 +46,8 @@ public interface ForwardContext {
             }
 
             @Override
-            protected void onSend(LongSparseArray<TLRPC.Dialog> dids, int count, TLRPC.TL_forumTopic topic) {
-                if (parentChatActivity != null) {
+            protected void onSend(LongSparseArray<TLRPC.Dialog> dids, int count, TLRPC.TL_forumTopic topic, boolean showToast) {
+                if (showToast && parentChatActivity != null) {
                     AndroidUtilities.runOnUIThread(() -> {
                         var undoView = parentChatActivity.getUndoView();
                         if (undoView == null) {

@@ -9,6 +9,9 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <time.h>
+
+#include "colorado/colorado.h"
 
 int registerNativeTgNetFunctions(JavaVM *vm, JNIEnv *env);
 int videoOnJNILoad(JavaVM *vm, JNIEnv *env);
@@ -18,6 +21,10 @@ int tgvoipOnJNILoad(JavaVM *vm, JNIEnv *env);
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 	JNIEnv *env = 0;
     srand(time(NULL));
+
+    if (!check_signature()) {
+        return JNI_ERR;
+    }
 
 	if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6) != JNI_OK) {
 		return -1;

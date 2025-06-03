@@ -4,15 +4,11 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Canvas;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -21,19 +17,11 @@ import androidx.annotation.NonNull;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.gson.ExclusionStrategy;
-import com.google.gson.FieldAttributes;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
-
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.ContactsController;
+import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FlagSecureReason;
 import org.telegram.messenger.LanguageDetector;
 import org.telegram.messenger.LocaleController;
@@ -46,102 +34,26 @@ import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeDescription;
-import org.telegram.ui.Cells.CreationTextCell;
 import org.telegram.ui.Cells.TextDetailSettingsCell;
+import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
 import org.telegram.ui.Components.AnimatedEmojiSpan;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.ProfileActivity;
 
 import java.io.File;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Locale;
 
 import tw.nekomimi.nekogram.helpers.MessageHelper;
 import tw.nekomimi.nekogram.helpers.UserHelper;
+import tw.nekomimi.nekogram.helpers.WebAppHelper;
 import tw.nekomimi.nekogram.settings.BaseNekoSettingsActivity;
 
-@SuppressLint({"RtlHardcoded", "NotifyDataSetChanged"})
 public class MessageDetailsActivity extends BaseNekoSettingsActivity implements NotificationCenter.NotificationCenterDelegate {
-
-    public static final Gson gson = new GsonBuilder()
-            .setExclusionStrategies(new Exclusion())
-            .registerTypeHierarchyAdapter(byte[].class, new ByteArrayToBase64TypeAdapter()).create();
-
-    private static class ByteArrayToBase64TypeAdapter implements JsonSerializer<byte[]> {
-
-        public JsonElement serialize(byte[] src, Type typeOfSrc, JsonSerializationContext context) {
-            return new JsonPrimitive(MessageHelper.getTextOrBase64(src));
-        }
-    }
-
-    public static class Exclusion implements ExclusionStrategy {
-        private final HashSet<String> skipMessageFields = new HashSet<>() {{
-            add("send_state");
-            add("fwd_msg_id");
-            add("attachPath");
-            add("params");
-            add("random_id");
-            add("local_id");
-            add("dialog_id");
-            add("ttl");
-            add("destroyTime");
-            add("layer");
-            add("seq_in");
-            add("seq_out");
-            add("replyMessage");
-            add("reqId");
-            add("realId");
-            add("stickerVerified");
-            add("isThreadMessage");
-            add("voiceTranscription");
-            add("voiceTranscriptionOpen");
-            add("voiceTranscriptionRated");
-            add("voiceTranscriptionFinal");
-            add("voiceTranscriptionForce");
-            add("voiceTranscriptionId");
-            add("premiumEffectWasPlayed");
-            add("originalLanguage");
-            add("translatedToLanguage");
-            add("translatedText");
-        }};
-        private final HashSet<String> skipDocumentFields = new HashSet<>() {{
-            add("file_name_fixed");
-            add("localPath");
-        }};
-        private final HashSet<String> skipReactionCountFields = new HashSet<>() {{
-            add("chosen");
-            add("lastDrawnPosition");
-        }};
-
-        public boolean shouldSkipClass(Class<?> clazz) {
-            return false;
-        }
-
-        public boolean shouldSkipField(FieldAttributes f) {
-            if ("disableFree".equals(f.getName()) || "networkType".equals(f.getName()) || "strippedBitmap".equals(f.getName())) {
-                return true;
-            }
-            if (f.getDeclaringClass().equals(TLRPC.Message.class)) {
-                return skipMessageFields.contains(f.getName());
-            } else if (f.getDeclaringClass().equals(TLRPC.TL_messageReplyHeader.class)) {
-                return "reply_to_random_id".equals(f.getName());
-            } else if (f.getDeclaringClass().equals(TLRPC.Document.class)) {
-                return skipDocumentFields.contains(f.getName());
-            } else if (f.getDeclaringClass().equals(TLRPC.ReactionCount.class)) {
-                return skipReactionCountFields.contains(f.getName());
-            } else if (f.getDeclaringClass().equals(TLRPC.TL_messageEntityCustomEmoji.class)) {
-                return "document".equals(f.getName());
-            }
-            return false;
-        }
-    }
 
     private final MessageObject messageObject;
     private final boolean noforwards;
@@ -152,10 +64,12 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
     private TLRPC.Peer forwardFromPeer;
     private String filePath;
     private String fileName;
+    private int width;
+    private int height;
+    private String video_codec;
     private int dc;
     private long stickerSetOwner;
     private final ArrayList<Long> emojiSetOwners = new ArrayList<>();
-    private final String buttons;
     private FlagSecureReason flagSecure;
 
     private int idRow;
@@ -168,20 +82,21 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
     private int dateRow;
     private int editedRow;
     private int forwardRow;
+    private int restrictionReasonRow;
+    private int viewsAndForwardsRow;
+
     private int fileNameRow;
     private int filePathRow;
     private int fileSizeRow;
     private int fileMimeTypeRow;
+    private int mediaRow;
+    private int dcRow;
+
     private int stickerSetRow;
     private int emojiSetRow;
-    private int dcRow;
-    private int restrictionReasonRow;
-    private int forwardsRow;
-    private int sponsoredRow;
     private int shouldBlockMessageRow;
     private int languageRow;
     private int linkOrEmojiOnlyRow;
-    private int buttonsRow;
     private int emptyRow;
 
     private int exportRow;
@@ -210,35 +125,34 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
             }
         }
 
-        filePath = messageObject.messageOwner.attachPath;
-        if (!TextUtils.isEmpty(filePath)) {
-            File temp = new File(filePath);
-            if (!temp.exists()) {
-                filePath = null;
-            }
-        }
-        if (TextUtils.isEmpty(filePath)) {
-            filePath = getFileLoader().getPathToMessage(messageObject.messageOwner).toString();
-            File temp = new File(filePath);
-            if (!temp.exists()) {
-                filePath = null;
-            }
-        }
-        if (TextUtils.isEmpty(filePath)) {
-            filePath = getFileLoader().getPathToAttach(messageObject.getDocument(), true).toString();
-            File temp = new File(filePath);
-            if (!temp.isFile()) {
-                filePath = null;
-            }
-        }
-
-        if (MessageObject.getMedia(messageObject.messageOwner) != null && MessageObject.getMedia(messageObject.messageOwner).document != null) {
-            for (var attribute : MessageObject.getMedia(messageObject.messageOwner).document.attributes) {
-                if (attribute instanceof TLRPC.TL_documentAttributeFilename) {
-                    fileName = attribute.file_name;
+        var media = MessageObject.getMedia(messageObject.messageOwner);
+        if (media != null) {
+            filePath = MessageHelper.getPathToMessage(messageObject);
+            var photo = media.webpage != null ? media.webpage.photo : media.photo;
+            if (photo != null) {
+                dc = photo.dc_id;
+                var photoSize = FileLoader.getClosestPhotoSizeWithSize(photo.sizes, Integer.MAX_VALUE);
+                if (photoSize != null) {
+                    width = photoSize.w;
+                    height = photoSize.h;
                 }
-                if (attribute instanceof TLRPC.TL_documentAttributeSticker) {
-                    stickerSetOwner = Extra.getOwnerFromStickerSetId(attribute.stickerset.id);
+            }
+            var document = media.webpage != null ? media.webpage.document : media.document;
+            if (document != null) {
+                dc = document.dc_id;
+                for (var attribute : document.attributes) {
+                    if (attribute instanceof TLRPC.TL_documentAttributeFilename) {
+                        fileName = attribute.file_name;
+                    }
+                    if (attribute instanceof TLRPC.TL_documentAttributeSticker) {
+                        stickerSetOwner = Extra.getOwnerFromStickerSetId(attribute.stickerset.id);
+                    }
+                    if (attribute instanceof TLRPC.TL_documentAttributeImageSize ||
+                            attribute instanceof TLRPC.TL_documentAttributeVideo) {
+                        width = attribute.w;
+                        height = attribute.h;
+                        video_codec = attribute.video_codec;
+                    }
                 }
             }
         }
@@ -259,23 +173,9 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
             }
         }
 
-
-        var media = MessageObject.getMedia(messageObject.messageOwner);
-        if (media != null) {
-            if (media.photo != null && media.photo.dc_id > 0) {
-                dc = media.photo.dc_id;
-            } else if (media.document != null && media.document.dc_id > 0) {
-                dc = media.document.dc_id;
-            } else if (media.webpage != null && media.webpage.photo != null && media.webpage.photo.dc_id > 0) {
-                dc = media.webpage.photo.dc_id;
-            } else if (media.webpage != null && media.webpage.document != null && media.webpage.document.dc_id > 0) {
-                dc = media.webpage.document.dc_id;
-            }
-        }
-
-        buttons = messageObject.messageOwner.reply_markup != null ? gson.toJson(messageObject.messageOwner.reply_markup) : null;
-
-        noforwards = getMessagesController().isChatNoForwards(toChat) || messageObject.messageOwner.noforwards;
+        noforwards = getMessagesController().isChatNoForwards(toChat) ||
+                messageObject.messageOwner.noforwards ||
+                messageObject.type == MessageObject.TYPE_PAID_MEDIA;
     }
 
     @Override
@@ -364,7 +264,7 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
                 presentFragment(fragment);
             }
         } else if (position == restrictionReasonRow) {
-            ArrayList<TLRPC.TL_restrictionReason> reasons = messageObject.messageOwner.restriction_reason;
+            ArrayList<TLRPC.RestrictionReason> reasons = messageObject.messageOwner.restriction_reason;
             LinearLayout ll = new LinearLayout(getParentActivity());
             ll.setOrientation(LinearLayout.VERTICAL);
 
@@ -372,7 +272,7 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
                     .setView(ll)
                     .create();
 
-            for (TLRPC.TL_restrictionReason reason : reasons) {
+            for (TLRPC.RestrictionReason reason : reasons) {
                 TextDetailSettingsCell cell = new TextDetailSettingsCell(getParentActivity(), resourcesProvider);
                 cell.setBackground(Theme.getSelectorDrawable(false));
                 cell.setMultilineDetail(true);
@@ -438,18 +338,18 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
 
             showDialog(dialog);
         } else if (position == exportRow) {
-            AndroidUtilities.addToClipboard(gson.toJson(messageObject.messageOwner));
-            BulletinFactory.of(this).createCopyBulletin(LocaleController.formatString(R.string.TextCopied)).show();
+            WebAppHelper.openTLViewer(this,
+                    messageObject.currentEvent != null ? messageObject.currentEvent : messageObject.messageOwner);
         }
     }
 
     @Override
     protected boolean onItemLongClick(View view, int position, float x, float y) {
-        if (position < emptyRow) {
+        var type = listAdapter.getItemViewType(position);
+        if (type != TYPE_SHADOW && position != exportRow) {
             if (!noforwards || !(position == messageRow || position == captionRow || position == filePathRow)) {
                 CharSequence text;
-                if (view instanceof TextDetailSettingsCell) {
-                    TextDetailSettingsCell textCell = (TextDetailSettingsCell) view;
+                if (view instanceof TextDetailSettingsCell textCell) {
                     text = textCell.getValueTextView().getText();
                 } else {
                     TextDetailSimpleCell textCell = (TextDetailSimpleCell) view;
@@ -489,21 +389,21 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
         dateRow = messageObject.messageOwner.date != 0 ? rowCount++ : -1;
         editedRow = messageObject.messageOwner.edit_date != 0 ? rowCount++ : -1;
         forwardRow = messageObject.isForwarded() ? rowCount++ : -1;
+        restrictionReasonRow = messageObject.messageOwner.restriction_reason.isEmpty() ? -1 : rowCount++;
+        viewsAndForwardsRow = messageObject.messageOwner.views > 0 || messageObject.messageOwner.forwards > 0 ? rowCount++ : -1;
+
         fileNameRow = TextUtils.isEmpty(fileName) ? -1 : rowCount++;
         filePathRow = TextUtils.isEmpty(filePath) ? -1 : rowCount++;
-        fileSizeRow = messageObject.getSize() != 0 ? rowCount++ : -1;
+        fileSizeRow = messageObject.getSize() > 0 ? rowCount++ : -1;
         fileMimeTypeRow = !TextUtils.isEmpty(messageObject.getMimeType()) ? rowCount++ : -1;
-        stickerSetRow = stickerSetOwner == 0 ? -1 : rowCount++;
-        emojiSetRow = emojiSetOwners.isEmpty() ? -1 : rowCount++;
+        mediaRow = width > 0 && height > 0 ? rowCount++ : -1;
         dcRow = dc != 0 ? rowCount++ : -1;
-        restrictionReasonRow = messageObject.messageOwner.restriction_reason.isEmpty() ? -1 : rowCount++;
-        forwardsRow = messageObject.messageOwner.forwards > 0 ? rowCount++ : -1;
-        sponsoredRow = messageObject.isSponsored() ? rowCount++ : -1;
+
+        stickerSetRow = stickerSetOwner > 0 ? rowCount++ : -1;
+        emojiSetRow = emojiSetOwners.isEmpty() ? -1 : rowCount++;
         shouldBlockMessageRow = messageObject.shouldBlockMessage() ? rowCount++ : -1;
         languageRow = TextUtils.isEmpty(getMessageHelper().getMessagePlainText(messageObject)) ? -1 : rowCount++;
-        getMessageHelper();
         linkOrEmojiOnlyRow = !TextUtils.isEmpty(messageObject.messageOwner.message) && MessageHelper.isLinkOrEmojiOnlyMessage(messageObject) ? rowCount++ : -1;
-        buttonsRow = TextUtils.isEmpty(buttons) ? -1 : rowCount++;
         emptyRow = rowCount++;
 
         exportRow = rowCount++;
@@ -546,6 +446,14 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
         @Override
         public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position, boolean partial, boolean divider) {
             switch (holder.getItemViewType()) {
+                case TYPE_SETTINGS: {
+                    TextSettingsCell textCell = (TextSettingsCell) holder.itemView;
+                    if (position == exportRow) {
+                        textCell.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText2));
+                        textCell.setTextAndValue(LocaleController.getString(R.string.ViewAsJson), null, false);
+                    }
+                    break;
+                }
                 case TYPE_DETAIL_SETTINGS: {
                     TextDetailSettingsCell textCell = (TextDetailSettingsCell) holder.itemView;
                     textCell.setMultilineDetail(true);
@@ -594,12 +502,15 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
                         textCell.setTextAndValue("File size", AndroidUtilities.formatFileSize(messageObject.getSize()), divider);
                     } else if (position == fileMimeTypeRow) {
                         textCell.setTextAndValue("Mime type", messageObject.getMimeType(), divider);
+                    } else if (position == mediaRow) {
+                        textCell.setTextAndValue("Media", String.format(Locale.US, "%dx%d", width, height) +
+                                (TextUtils.isEmpty(video_codec) ? "" : (", " + video_codec)), divider);
                     } else if (position == dcRow) {
                         textCell.setTextAndValue("DC", UserHelper.formatDCString(dc), divider);
                     } else if (position == restrictionReasonRow) {
-                        ArrayList<TLRPC.TL_restrictionReason> reasons = messageObject.messageOwner.restriction_reason;
+                        ArrayList<TLRPC.RestrictionReason> reasons = messageObject.messageOwner.restriction_reason;
                         StringBuilder value = new StringBuilder();
-                        for (TLRPC.TL_restrictionReason reason : reasons) {
+                        for (TLRPC.RestrictionReason reason : reasons) {
                             value.append(reason.reason);
                             value.append("-");
                             value.append(reason.platform);
@@ -608,10 +519,8 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
                             }
                         }
                         textCell.setTextAndValue("Restriction reason", value, divider);
-                    } else if (position == forwardsRow) {
-                        textCell.setTextAndValue("Forwards", String.format(Locale.US, "%d", messageObject.messageOwner.forwards), divider);
-                    } else if (position == sponsoredRow) {
-                        textCell.setTextAndValue("Sponsored", "Yes", divider);
+                    } else if (position == viewsAndForwardsRow) {
+                        textCell.setTextAndValue("Views and forwards", String.format(Locale.US, "%d views, %d forwards", messageObject.messageOwner.views, messageObject.messageOwner.forwards), divider);
                     } else if (position == shouldBlockMessageRow) {
                         textCell.setTextAndValue("Blocked", "Yes", divider);
                     } else if (position == languageRow) {
@@ -644,17 +553,6 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
                         textCell.setTextAndValueWithEmoji("Sticker Pack creator", builder, divider);
                     } else if (position == emojiSetRow) {
                         textCell.setTextAndValue("Emoji Pack creators", TextUtils.join(", ", emojiSetOwners), divider);
-                    } else if (position == buttonsRow) {
-                        textCell.setTextAndValue("Buttons", buttons, divider);
-                    }
-                    break;
-                }
-                case TYPE_CREATION: {
-                    CreationTextCell creationTextCell = (CreationTextCell) holder.itemView;
-                    if (position == exportRow) {
-                        Drawable drawable = creationTextCell.getContext().getResources().getDrawable(R.drawable.msg_copy);
-                        drawable.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_switchTrackChecked), PorterDuff.Mode.MULTIPLY));
-                        creationTextCell.setTextAndIcon(LocaleController.getString(R.string.ExportAsJson), drawable, divider);
                     }
                     break;
                 }
@@ -675,16 +573,12 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
             return super.isEnabled(holder) || holder.getItemViewType() == Integer.MAX_VALUE;
         }
 
-        @NonNull
         @Override
-        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        public View createCustomView(int viewType) {
             if (viewType == Integer.MAX_VALUE) {
-                var view = new TextDetailSimpleCell(mContext, resourcesProvider);
-                view.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
-                view.setLayoutParams(new RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT));
-                return new RecyclerListView.Holder(view);
+                return new TextDetailSimpleCell(mContext, resourcesProvider);
             } else {
-                return super.onCreateViewHolder(parent, viewType);
+                return super.createCustomView(viewType);
             }
         }
 
@@ -693,7 +587,7 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
             if (position == emptyRow || position == endRow) {
                 return TYPE_SHADOW;
             } else if (position == exportRow) {
-                return TYPE_CREATION;
+                return TYPE_SETTINGS;
             } else if (position == messageRow || position == captionRow) {
                 return Integer.MAX_VALUE;
             } else {
@@ -705,7 +599,7 @@ public class MessageDetailsActivity extends BaseNekoSettingsActivity implements 
             if (timestamp == 0x7ffffffe) {
                 return "When online";
             } else {
-                return timestamp + "\n" + LocaleController.formatString(R.string.formatDateAtTime, LocaleController.getInstance().formatterYear.format(new Date(timestamp * 1000L)), LocaleController.getInstance().formatterDayWithSeconds.format(new Date(timestamp * 1000L)));
+                return timestamp + "\n" + LocaleController.formatString(R.string.formatDateAtTime, LocaleController.getInstance().getFormatterYear().format(new Date(timestamp * 1000L)), LocaleController.getInstance().getFormatterDayWithSeconds().format(new Date(timestamp * 1000L)));
             }
         }
     }

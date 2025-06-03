@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageInstaller;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -21,6 +22,7 @@ import android.widget.TextView;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
@@ -79,7 +81,7 @@ public final class ApkInstaller {
                 dialog = null;
             }
             AlertsCreator.createSimpleAlert(context, LocaleController.getString(R.string.ErrorOccurred) + "\n" + e.getLocalizedMessage()).show();
-            AndroidUtilities.openForView(apk, "install.apk", "application/vnd.android.package-archive", context, null);
+            AndroidUtilities.openForView(apk, "install.apk", "application/vnd.android.package-archive", context, null, false);
         }
     }
 
@@ -96,7 +98,7 @@ public final class ApkInstaller {
         if (context == null || document == null) {
             return;
         }
-        if (XiaomiUtilities.isMIUI()) {
+        if (hasBrokenPackageInstaller(context)) {
             AndroidUtilities.openForView(document, false, context);
             return;
         }
@@ -155,12 +157,31 @@ public final class ApkInstaller {
         });
     }
 
+    private static Boolean hasBrokenPackageInstaller = null;
+
+    public static boolean hasBrokenPackageInstaller(Context context) {
+        if (!XiaomiUtilities.isMIUI()) {
+            return false;
+        }
+        if (hasBrokenPackageInstaller == null) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                return true;
+            }
+            var intent = new Intent("android.content.pm.action.CONFIRM_INSTALL");
+            var activity = context.getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+            if (activity == null) {
+                return hasBrokenPackageInstaller = true;
+            }
+            var packageName = activity.activityInfo.packageName;
+            FileLog.d("Current package installer: " + packageName);
+            hasBrokenPackageInstaller = packageName.startsWith("com.miui");
+        }
+        return hasBrokenPackageInstaller;
+    }
+
     private static InstallReceiver register(Context context, Runnable onSuccess) {
         var receiver = new InstallReceiver(context, ApplicationLoader.getApplicationId(), onSuccess);
-        var filter = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
-        filter.addDataScheme("package");
-        context.registerReceiver(receiver, filter);
-        context.registerReceiver(receiver, new IntentFilter(ApkInstaller.class.getName()));
+        ContextCompat.registerReceiver(context, receiver, new IntentFilter(ApkInstaller.class.getName()), ContextCompat.RECEIVER_NOT_EXPORTED);
         return receiver;
     }
 

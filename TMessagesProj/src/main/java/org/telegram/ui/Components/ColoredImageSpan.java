@@ -1,6 +1,7 @@
 package org.telegram.ui.Components;
 
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
@@ -11,6 +12,7 @@ import android.text.style.ReplacementSpan;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
@@ -19,13 +21,14 @@ import org.telegram.ui.ActionBar.Theme;
 public class ColoredImageSpan extends ReplacementSpan {
 
     int drawableColor;
-    Drawable drawable;
+    public Drawable drawable;
+    public boolean recolorDrawable = true;
 
     boolean usePaintColor = true;
     public boolean useLinkPaintColor = false;
     int colorKey;
     private int topOffset = 0;
-    private float translateX, translateY;
+    private float translateX, translateY, rotate;
     private float alpha = 1f;
     private int overrideColor;
 
@@ -91,6 +94,10 @@ public class ColoredImageSpan extends ReplacementSpan {
         translateY = ty;
     }
 
+    public void rotate(float r) {
+        rotate = r;
+    }
+
     public void setWidth(int width) {
         sizeWidth = width;
     }
@@ -108,7 +115,7 @@ public class ColoredImageSpan extends ReplacementSpan {
                 fm.top = fontMetrics.top;
                 fm.bottom = fontMetrics.bottom;
             }
-            return (int) (scaleX * Math.abs(spaceScaleX) * size);
+            return (int) (Math.abs(scaleX) * Math.abs(spaceScaleX) * size);
         }
         if (sizeWidth != 0)
             return (int) (Math.abs(scaleX) * sizeWidth);
@@ -117,22 +124,24 @@ public class ColoredImageSpan extends ReplacementSpan {
 
     @Override
     public void draw(@NonNull Canvas canvas, CharSequence text, int start, int end, float x, int top, int y, int bottom, @NonNull Paint paint) {
+        boolean drawableColorIsPaintColor = false;
         int color;
         if (checkColorDelegate != null) {
             checkColorDelegate.run();
-        } else {
+        } else if (recolorDrawable) {
             if (overrideColor != 0) {
                 color = overrideColor;
             } else if (useLinkPaintColor && paint instanceof TextPaint) {
                 color = ((TextPaint) paint).linkColor;
             } else if (usePaintColor) {
+                drawableColorIsPaintColor = true;
                 color = paint.getColor();
             } else {
                 color = Theme.getColor(colorKey);
             }
             if (drawableColor != color) {
                 drawableColor = color;
-                drawable.setColorFilter(new PorterDuffColorFilter(drawableColor, PorterDuff.Mode.MULTIPLY));
+                drawable.setColorFilter(new PorterDuffColorFilter(drawableColor, PorterDuff.Mode.SRC_IN));
             }
         }
 
@@ -153,8 +162,15 @@ public class ColoredImageSpan extends ReplacementSpan {
             if (scaleX != 1f || scaleY != 1f) {
                 canvas.scale(scaleX, scaleY, 0, drawable.getBounds().centerY());
             }
-            if (alpha != 1f || paint.getAlpha() != 0xFF) {
+            if (rotate != 1f) {
+                canvas.rotate(rotate, drawable.getBounds().centerX(), drawable.getBounds().centerY());
+            }
+            if (drawableColorIsPaintColor) {
+                drawable.setAlpha((int) (0xFF * alpha * (paint.getAlpha() / (float) Color.alpha(drawableColor))));
+            } else if (alpha != 1f || paint.getAlpha() != 0xFF) {
                 drawable.setAlpha((int) (alpha * paint.getAlpha()));
+            } else {
+                drawable.setAlpha(255);
             }
             drawable.draw(canvas);
         }

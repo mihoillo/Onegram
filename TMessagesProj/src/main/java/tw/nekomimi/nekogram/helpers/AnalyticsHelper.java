@@ -9,6 +9,8 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildConfig;
+import org.telegram.messenger.FileLog;
+import org.telegram.messenger.Utilities;
 
 import java.util.HashMap;
 
@@ -21,29 +23,38 @@ public class AnalyticsHelper {
 
     public static boolean sendBugReport = true;
     public static boolean analyticsDisabled = false;
+    public static String userId = null;
 
     public static void start(Application application) {
-        if (Extra.FORCE_ANALYTICS) {
-            firebaseAnalytics = FirebaseAnalytics.getInstance(application);
-            firebaseAnalytics.setAnalyticsCollectionEnabled(true);
-            var crashlytics = FirebaseCrashlytics.getInstance();
-            crashlytics.setCustomKey("version_code", BuildConfig.VERSION_CODE);
-            crashlytics.setCustomKey("build_type", BuildConfig.BUILD_TYPE);
-            crashlytics.setCrashlyticsCollectionEnabled(true);
-        } else {
-            preferences = application.getSharedPreferences("nekoanalytics", Application.MODE_PRIVATE);
-            analyticsDisabled = preferences.getBoolean("analyticsDisabled", false);
-            if (analyticsDisabled) {
-                return;
-            }
-            firebaseAnalytics = FirebaseAnalytics.getInstance(application);
-            firebaseAnalytics.setAnalyticsCollectionEnabled(true);
-            sendBugReport = preferences.getBoolean("sendBugReport", true);
-            var crashlytics = FirebaseCrashlytics.getInstance();
-            crashlytics.setCustomKey("version_code", BuildConfig.VERSION_CODE);
-            crashlytics.setCustomKey("build_type", BuildConfig.BUILD_TYPE);
-            crashlytics.setCrashlyticsCollectionEnabled(true);
+        preferences = application.getSharedPreferences("nekoanalytics", Application.MODE_PRIVATE);
+        analyticsDisabled = preferences.getBoolean("analyticsDisabled", false) && !Extra.FORCE_ANALYTICS;
+        sendBugReport = preferences.getBoolean("sendBugReport", true) && !Extra.FORCE_ANALYTICS;
+        if (analyticsDisabled) {
+            FileLog.d("Analytics: userId = disabled");
+            return;
         }
+        userId = preferences.getString("userId", null);
+        if (userId == null || userId.length() < 32) {
+            preferences.edit().putString("userId", userId = generateUserID()).apply();
+        }
+        firebaseAnalytics = FirebaseAnalytics.getInstance(application);
+        firebaseAnalytics.setAnalyticsCollectionEnabled(true);
+        firebaseAnalytics.setUserId(userId);
+        var crashlytics = FirebaseCrashlytics.getInstance();
+        crashlytics.setUserId(userId);
+        crashlytics.setCustomKey("version_code", BuildConfig.VERSION_CODE);
+        crashlytics.setCustomKey("build_type", BuildConfig.BUILD_TYPE);
+        crashlytics.setCrashlyticsCollectionEnabled(true);
+
+        FileLog.d("Analytics: userId = " + userId);
+    }
+
+    private static String generateUserID() {
+        return Utilities.generateRandomString(32);
+    }
+
+    public static void trackScreenView() {
+        trackEvent(FirebaseAnalytics.Event.SCREEN_VIEW);
     }
 
     public static void trackEvent(String event) {

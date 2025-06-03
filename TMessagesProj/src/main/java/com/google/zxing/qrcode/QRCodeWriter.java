@@ -16,6 +16,8 @@
 
 package com.google.zxing.qrcode;
 
+import static org.telegram.messenger.AndroidUtilities.readRes;
+
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -35,7 +37,6 @@ import com.google.zxing.qrcode.encoder.QRCode;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SvgHelper;
-import org.telegram.ui.Components.RLottieDrawable;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -62,6 +63,10 @@ public final class QRCodeWriter {
   }
 
   public Bitmap encode(String contents, int width, int height, Map<EncodeHintType, ?> hints, Bitmap bitmap, float radiusFactor, int backgroundColor, int color) throws WriterException {
+    return encode(contents, width, height, hints, bitmap, radiusFactor, backgroundColor, color, true);
+  }
+
+  public Bitmap encode(String contents, int width, int height, Map<EncodeHintType, ?> hints, Bitmap bitmap, float radiusFactor, int backgroundColor, int color, boolean drawLogo) throws WriterException {
 
     if (contents.isEmpty()) {
       throw new IllegalArgumentException("Found empty contents");
@@ -121,7 +126,7 @@ public final class QRCodeWriter {
     rect.setShape(GradientDrawable.RECTANGLE);
     rect.setCornerRadii(radii);
 
-    imageBloks = Math.round((size - 32) / 4.65f / multiple);
+    imageBloks = !drawLogo ? 0 : Math.round((size - 32) / 4.65f / multiple);
     if (imageBloks % 2 != inputWidth % 2) {
       imageBloks++;
     }
@@ -187,10 +192,11 @@ public final class QRCodeWriter {
       }
     }
 
-    String svg = RLottieDrawable.readRes(null, R.raw.qr_logo);
-    Bitmap icon = SvgHelper.getBitmap(svg, imageSize, imageSize, false);
-    canvas.drawBitmap(icon, imageX, imageX, null);
-    icon.recycle();
+    if (drawLogo) {
+      Bitmap icon = SvgHelper.getBitmap(readRes(R.raw.qr_logo), imageSize, imageSize, false);
+      canvas.drawBitmap(icon, imageX, imageX, null);
+      icon.recycle();
+    }
 
     canvas.setBitmap(null);
 

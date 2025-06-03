@@ -15,7 +15,6 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.util.Base64;
-import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -72,25 +71,58 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.HashMap;
+import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import tw.nekomimi.nekogram.helpers.remote.BaseRemoteHelper;
-import tw.nekomimi.nekogram.helpers.remote.UpdateHelper;
 
 public class MessageHelper extends BaseController {
 
     private static final MessageHelper[] Instance = new MessageHelper[UserConfig.MAX_ACCOUNT_COUNT];
     private static final CharsetDecoder utf8Decoder = StandardCharsets.UTF_8.newDecoder();
-    private static final SpannableStringBuilder[] spannedStrings = new SpannableStringBuilder[3];
+    private static final SpannableStringBuilder[] spannedStrings = new SpannableStringBuilder[5];
 
     public MessageHelper(int num) {
         super(num);
+    }
+
+    private static String formatTime(int timestamp) {
+        return LocaleController.formatString(R.string.formatDateAtTime, LocaleController.getInstance().getFormatterYear().format(new Date(timestamp * 1000L)), LocaleController.getInstance().getFormatterDayWithSeconds().format(new Date(timestamp * 1000L)));
+    }
+
+    public static CharSequence getTimeHintText(MessageObject messageObject) {
+        var text = new SpannableStringBuilder();
+        if (spannedStrings[3] == null) {
+            spannedStrings[3] = new SpannableStringBuilder("\u200B");
+            spannedStrings[3].setSpan(new ColoredImageSpan(Theme.chat_timeHintSentDrawable), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        text.append(spannedStrings[3]);
+        text.append(' ');
+        text.append(formatTime(messageObject.messageOwner.date));
+        if (messageObject.messageOwner.edit_date != 0) {
+            text.append("\n");
+            if (spannedStrings[1] == null) {
+                spannedStrings[1] = new SpannableStringBuilder("\u200B");
+                spannedStrings[1].setSpan(new ColoredImageSpan(Theme.chat_editDrawable), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            text.append(spannedStrings[1]);
+            text.append(' ');
+            text.append(formatTime(messageObject.messageOwner.edit_date));
+        }
+        if (messageObject.messageOwner.fwd_from != null && messageObject.messageOwner.fwd_from.date != 0) {
+            text.append("\n");
+            if (spannedStrings[4] == null) {
+                spannedStrings[4] = new SpannableStringBuilder("\u200B");
+                var span = new ColoredImageSpan(Theme.chat_timeHintForwardDrawable);
+                span.setSize(AndroidUtilities.dp(12));
+                spannedStrings[4].setSpan(span, 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            text.append(spannedStrings[4]);
+            text.append(' ');
+            text.append(formatTime(messageObject.messageOwner.fwd_from.date));
+        }
+        return text;
     }
 
     public static CharSequence createBlockedString(MessageObject messageObject) {
@@ -102,7 +134,7 @@ public class MessageHelper extends BaseController {
         spannableStringBuilder
                 .append(spannedStrings[2])
                 .append(' ')
-                .append(LocaleController.getInstance().formatterDay.format((long) (messageObject.messageOwner.date) * 1000));
+                .append(LocaleController.getInstance().getFormatterDay().format((long) (messageObject.messageOwner.date) * 1000));
         return spannableStringBuilder;
     }
 
@@ -115,7 +147,7 @@ public class MessageHelper extends BaseController {
         spannableStringBuilder
                 .append(spannedStrings[1])
                 .append(' ')
-                .append(LocaleController.getInstance().formatterDay.format((long) (messageObject.messageOwner.date) * 1000));
+                .append(LocaleController.getInstance().getFormatterDay().format((long) (messageObject.messageOwner.date) * 1000));
         return spannableStringBuilder;
     }
 
@@ -123,7 +155,7 @@ public class MessageHelper extends BaseController {
         var fromLanguage = messageObject.messageOwner.originalLanguage;
         var toLanguage = messageObject.messageOwner.translatedToLanguage;
         if ("und".equals(fromLanguage) || TextUtils.isEmpty(fromLanguage) || TextUtils.isEmpty(toLanguage)) {
-            return LocaleController.getString(R.string.Translated) + " " + LocaleController.getInstance().formatterDay.format((long) (messageObject.messageOwner.date) * 1000);
+            return LocaleController.getString(R.string.Translated) + " " + LocaleController.getInstance().getFormatterDay().format((long) (messageObject.messageOwner.date) * 1000);
         }
         if (spannedStrings[0] == null) {
             spannedStrings[0] = new SpannableStringBuilder("\u200B");
@@ -139,25 +171,8 @@ public class MessageHelper extends BaseController {
                 .append(' ')
                 .append(!TextUtils.isEmpty(to.getScript()) ? HtmlCompat.fromHtml(to.getDisplayScript(), HtmlCompat.FROM_HTML_MODE_LEGACY) : to.getDisplayName())
                 .append(' ')
-                .append(LocaleController.getInstance().formatterDay.format((long) (messageObject.messageOwner.date) * 1000));
+                .append(LocaleController.getInstance().getFormatterDay().format((long) (messageObject.messageOwner.date) * 1000));
         return spannableStringBuilder;
-    }
-
-    public static ArrayList<TLRPC.MessageEntity> checkBlockedUserEntities(MessageObject messageObject, ArrayList<TLRPC.MessageEntity> original) {
-        if (messageObject.shouldBlockMessage() && messageObject.messageOwner.message != null) {
-            ArrayList<TLRPC.MessageEntity> entities = new ArrayList<>(original);
-            var spoiler = new TLRPC.TL_messageEntitySpoiler();
-            spoiler.offset = 0;
-            spoiler.length = messageObject.messageOwner.message.length();
-            entities.add(spoiler);
-            return entities;
-        } else {
-            return original;
-        }
-    }
-
-    public static ArrayList<TLRPC.MessageEntity> checkBlockedUserEntities(MessageObject messageObject) {
-        return checkBlockedUserEntities(messageObject, messageObject.messageOwner.entities);
     }
 
     public static void addFileToClipboard(File file, Runnable callback) {
@@ -181,56 +196,47 @@ public class MessageHelper extends BaseController {
         }
     }
 
+    public void clearMessageFiles(MessageObject messageObject, Runnable done) {
+        Utilities.globalQueue.postRunnable(() -> {
+            try {
+                var files = getFilesToMessage(messageObject);
+                for (File file : files) {
+                    if (file.exists() && !file.delete()) {
+                        file.deleteOnExit();
+                    }
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+            messageObject.checkMediaExistance();
+            AndroidUtilities.runOnUIThread(done);
+        });
+    }
+
+    public ArrayList<File> getFilesToMessage(MessageObject messageObject) {
+        ArrayList<File> files = new ArrayList<>();
+        files.add(new File(messageObject.messageOwner.attachPath));
+        files.add(getFileLoader().getPathToMessage(messageObject.messageOwner));
+        var document = messageObject.getDocument();
+        if (document != null) {
+            files.add(getFileLoader().getPathToAttach(document, false));
+            files.add(getFileLoader().getPathToAttach(document, true));
+        }
+        var media = messageObject.messageOwner.media;
+        if (media != null && !media.alt_documents.isEmpty()) {
+            media.alt_documents.forEach(doc -> {
+                files.add(getFileLoader().getPathToAttach(doc, false));
+                files.add(getFileLoader().getPathToAttach(doc, true));
+            });
+        }
+        return files;
+    }
+
     public void addMessageToClipboard(MessageObject selectedObject, Runnable callback) {
         var path = getPathToMessage(selectedObject);
         if (!TextUtils.isEmpty(path)) {
             addFileToClipboard(new File(path), callback);
         }
-    }
-
-    public void generateUpdateInfo(BaseFragment fragment, SparseArray<MessageObject>[] selectedMessagesIds, Runnable callback) {
-        fragment.showDialog(new AlertDialog.Builder(fragment.getParentActivity())
-                .setItems(new CharSequence[]{"direct", "play"}, (dialog, which) -> {
-                    var tag = which == 0 ? "updatev4" : "updateplayv4";
-                    ArrayList<MessageObject> messageObjects = new ArrayList<>();
-                    for (int a = 1; a >= 0; a--) {
-                        for (int b = 0; b < selectedMessagesIds[a].size(); b++) {
-                            messageObjects.add(selectedMessagesIds[a].valueAt(b));
-                        }
-                    }
-                    var update = new UpdateHelper.Update();
-                    update.canNotSkip = false;
-                    Pattern regex = Pattern.compile("Nekogram-(.*)-(\\d+)-(.*)\\.apk");
-                    for (MessageObject messageObject : messageObjects) {
-                        if (messageObject.isAnyKindOfSticker()) {
-                            update.sticker = messageObject.getId();
-                        } else if (messageObject.getDocument() != null) {
-                            Matcher m = regex.matcher(messageObject.getDocumentName());
-                            if (m.find()) {
-                                if (update.version == null) {
-                                    update.version = m.group(1);
-                                    //noinspection ConstantConditions
-                                    update.versionCode = Integer.valueOf(m.group(2));
-                                }
-                                if (which == 0) {
-                                    String abi = m.group(3);
-                                    if (abi != null) {
-                                        if (update.files == null) {
-                                            update.files = new HashMap<>();
-                                        }
-                                        update.files.put(abi, messageObject.getId());
-                                    }
-                                } else if (update.url == null) {
-                                    update.url = "https://play.google.com/store/apps/details?id=tw.nekomimi.nekogram";
-                                }
-                            }
-                        } else {
-                            update.message = messageObject.getId();
-                        }
-                    }
-                    AndroidUtilities.addToClipboard("#" + tag + BaseRemoteHelper.GSON.toJson(update));
-                    callback.run();
-                }).create());
     }
 
     private MessageObject getTargetMessageObjectFromGroup(MessageObject.GroupedMessages selectedObjectGroup) {
@@ -252,10 +258,10 @@ public class MessageHelper extends BaseController {
         String message;
         if (messageObject.isPoll()) {
             TLRPC.Poll poll = ((TLRPC.TL_messageMediaPoll) messageObject.messageOwner.media).poll;
-            StringBuilder pollText = new StringBuilder(poll.question).append("\n");
-            for (TLRPC.TL_pollAnswer answer : poll.answers) {
+            StringBuilder pollText = new StringBuilder(poll.question.text).append("\n");
+            for (TLRPC.PollAnswer answer : poll.answers) {
                 pollText.append("\n\uD83D\uDD18 ");
-                pollText.append(answer.text);
+                pollText.append(answer.text.text);
             }
             message = pollText.toString();
         } else if (messageObject.isVoiceTranscriptionOpen()) {
@@ -382,10 +388,10 @@ public class MessageHelper extends BaseController {
         });
     }
 
-    public static void readQrFromMessage(View parent, MessageObject selectedObject, MessageObject.GroupedMessages selectedObjectGroup, ViewGroup viewGroup, Utilities.Callback<ArrayList<QrHelper.QrResult>> callback, AtomicBoolean waitForQr, AtomicReference<Runnable> onQrDetectionDone) {
+    public static void readQrFromMessage(View parent, MessageObject selectedObject, MessageObject.GroupedMessages selectedObjectGroup, ViewGroup viewGroup, Utilities.Callback<ArrayList<String>> callback, AtomicBoolean waitForQr, AtomicReference<Runnable> onQrDetectionDone) {
         waitForQr.set(true);
         Utilities.globalQueue.postRunnable(() -> {
-            ArrayList<QrHelper.QrResult> qrResults = new ArrayList<>();
+            ArrayList<String> qrResults = new ArrayList<>();
             ArrayList<MessageObject> messageObjects = new ArrayList<>();
             if (selectedObjectGroup != null) {
                 messageObjects.addAll(selectedObjectGroup.messages);
@@ -616,6 +622,7 @@ public class MessageHelper extends BaseController {
         TLRPC.Message message = messageObject.messageOwner;
 
         MessageObject obj = new MessageObject(currentAccount, message, true, true);
+        obj.messageBlocked = messageObject.messageBlocked;
         obj.translating = translating;
         obj.manually = translated;
 
